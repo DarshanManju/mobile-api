@@ -63,6 +63,18 @@ class Api_model extends CI_Model
 		$query = $this->db->get('users');
 		return $query->result_array();
 	}
+
+	function insert_user_login_otp($data)
+	{
+		$this->db->insert('user_signin_otp', $data);
+	}	
+
+	function check_otp($user_id, $otp)
+	{
+		$this->db->where(['user_id' => $user_id, 'otp' => $otp]);
+		$query = $this->db->get('user_signin_otp');
+		return $query->row_array();
+	}
 }
 
 ?>

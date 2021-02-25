@@ -95,28 +95,32 @@ class Api extends CI_Controller {
 		{
 			$data = array(
 				'email'		=>	$this->input->post('email'),
-				'password'	=>	$this->input->post('password')
+				'password'	=>	$this->input->post('password'),
+				'user_id'	=> 	''
 			);
 			
 			if($check_email_exists == NULL  && $email != '')
 			{
 				$array = array(
 					'status'		=>	0,
-					'message'		=>	'User not registered.'
+					'message'		=>	'User not registered.',
+					'user_id'		=>	''
 				);
 			}
 			elseif($check_user_data == NULL)
 			{
 				$array = array(
 					'status'		=>	0,
-					'message' 		=>	'Invalid password.'
+					'message' 		=>	'Invalid password.',
+					'user_id'		=> 	''
 				);
 			}
 			else
 			{
 				$array = array(
-					'status'				=>	1,
-					'message'		 		=>	''
+					'status'	=>	1,
+					'message'	=>	'Successfully Logged In.',
+					'user_id'	=> 	$check_user_data[0]['id']
 				);
 			}
 			
@@ -125,13 +129,99 @@ class Api extends CI_Controller {
 		{
 			$array = array(
 				'status'				=>	0,
-				'message' 		 		=>	form_error('email').', '.form_error('password')
+				'message' 		 		=>	form_error('email').', '.form_error('password'),
+				'user_id'				=> 	''
 			);
 		}
 
 		echo json_encode($array);
 	}
 	
+	function get_current_datetime()
+	{
+		$date = date_default_timezone_set('Asia/Kolkata');
+		$current_time = date('Y-m-d g:i:s');
+		return $current_time;
+	}
+
+	function get_time_difference($date1, $date2)
+	{
+		$date1 = new DateTime($date1);
+		$date2 = new DateTime($date2);
+		$diff = $date1->diff($date2);
+
+		return $diff->i;
+	}
+
+	function signin_otp()
+	{
+		$this->load->helper('string');
+		$otp = random_string('numeric', 6);//we can get this code from message api from backend
+		$user_id = random_string('numeric', 4);
+		$current_time = $this->get_current_datetime();
+		
+		$data = array('otp'=>$otp, 'user_id'=>$user_id, 'date_created'=>$current_time);
+		$this->api_model->insert_user_login_otp($data);
+		$array = array(
+			'status'	=>	1,
+			'otp'		=>	$otp,
+			'user_id'	=> 	$user_id,
+			'message'	=>	'This otp is valid till next 2 minutes'
+		);
+
+		echo json_encode($array);
+	}
+
+	function confirm_signin_otp()
+	{
+		$current_time = $this->get_current_datetime();
+		$this->form_validation->set_rules('user_id', 'User Id', 'trim|required');
+		$this->form_validation->set_rules('otp', 'OTP', 'trim|required');
+
+		if($this->form_validation->run())
+		{	
+			$data = array(
+				'otp'			=>	$this->input->post('otp')
+			);
+
+			$result = $this->api_model->check_otp($this->input->post('user_id'), $this->input->post('otp'));
+			$otp_requested_time = $result['date_created'];
+
+			$time_difference = $this->get_time_difference($otp_requested_time, $current_time);
+			
+			if($time_difference > 2)
+			{
+				$array = array(
+					'status'		=>	0,
+					'message'		=>	'OTP timeout'
+				);
+			}
+			elseif($result['otp'] != $this->input->post('otp'))
+			{
+				$array = array(
+					'status'		=>	0,
+					'message'		=>	'OTP mismatch'
+				);
+			}
+			else
+			{
+				$array = array(
+					'status'		=>	1,
+					'message'		=>	'OTP verification success'
+				);
+			}
+		}
+		else
+		{
+			$array = array(
+				'status'	=>	0,
+				'message'	=>	form_error('user_id').', '.form_error('otp')
+			);
+		}
+
+		echo json_encode($array);
+	}
+
 	//dummy methods for testing 
 	function fetch_single()
 	{
