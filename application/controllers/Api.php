@@ -153,6 +153,7 @@ class Api extends CI_Controller {
 		return $diff->i;
 	}
 
+	//this method will be called when user requests for the otp
 	function signin_otp()
 	{
 		$this->load->helper('string');
